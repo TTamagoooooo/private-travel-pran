@@ -1,15 +1,11 @@
 // 宿泊台帳 — frontend logic. No build step: plain fetch calls to /api/*,
-// which are Cloudflare Pages Functions backed by Cloudflare KV.
+// which are handled by the Worker (src/index.js) backed by Cloudflare KV.
 
 const state = {
   trips: [],
   selectedId: null,
-  hotels: {},       // tripId -> hotel[]
-  suggestions: {},  // tripId -> AI search results not yet saved
-  loadingTripId: null,
+  hotels: {}, // tripId -> hotel[]
   loadingHotels: false,
-  searchError: null,
-  savingIds: new Set(),
 };
 
 const el = {
@@ -72,29 +68,9 @@ async function saveTripNotes(id, notes) {
 async function addManualHotel(trip, entry) {
   const hotel = await api("/hotels", {
     method: "POST",
-    body: JSON.stringify({ tripId: trip.id, source: "manual", ...entry }),
+    body: JSON.stringify({ tripId: trip.id, ...entry }),
   });
   state.hotels[trip.id] = [...(state.hotels[trip.id] || []), hotel];
-  render();
-}
-
-async function saveSuggestion(trip, suggestion) {
-  const hotel = await api("/hotels", {
-    method: "POST",
-    body: JSON.stringify({
-      tripId: trip.id,
-      source: "ai",
-      name: suggestion.name,
-      price: suggestion.price,
-      rating: suggestion.rating,
-      distance: suggestion.distance,
-      access: suggestion.access,
-      note: [suggestion.area, suggestion.note].filter(Boolean).join(" / "),
-      url: suggestion.url,
-    }),
-  });
-  state.hotels[trip.id] = [...(state.hotels[trip.id] || []), hotel];
-  state.suggestions[trip.id] = (state.suggestions[trip.id] || []).filter((s) => s !== suggestion);
   render();
 }
 
@@ -113,36 +89,10 @@ async function deleteHotel(trip, hotel) {
   await api(`/hotels/${hotel.id}?tripId=${trip.id}`, { method: "DELETE" }).catch(console.error);
 }
 
-async function searchHotels(trip) {
-  state.loadingTripId = trip.id;
-  state.searchError = null;
-  render();
-  try {
-    const results = await api("/search", {
-      method: "POST",
-      body: JSON.stringify({
-        destination: trip.destination,
-        checkin: trip.checkin,
-        checkout: trip.checkout,
-        guests: trip.guests,
-        budget: trip.budget,
-        notes: trip.notes,
-      }),
-    });
-    state.suggestions[trip.id] = results;
-  } catch (e) {
-    state.searchError = e.message;
-  } finally {
-    state.loadingTripId = null;
-    render();
-  }
-}
-
 // -------------------------------------------------------------- render ---
-function fmtYen(n, currency) {
+function fmtYen(n) {
   if (n === null || n === undefined) return "—";
-  const symbol = !currency || currency === "JPY" ? "¥" : currency;
-  return `${symbol}${Number(n).toLocaleString()}`;
+  return `¥${Number(n).toLocaleString()}`;
 }
 
 function fmtDate(iso) {
@@ -195,8 +145,6 @@ function renderMain() {
   }
 
   const hotels = state.hotels[trip.id];
-  const suggestions = state.suggestions[trip.id] || [];
-  const isLoadingSearch = state.loadingTripId === trip.id;
 
   el.mainPanel.innerHTML = `
     <div class="trip-header">
@@ -208,11 +156,8 @@ function renderMain() {
           ${trip.budget ? `<span>💰 上限 ${fmtYen(trip.budget)}/泊</span>` : ""}
         </div>
       </div>
-      <div style="display:flex; gap:8px;">
-        <button class="btn-outline" id="btn-manual">＋ 自分で追加</button>
-        <button class="btn-solid" id="btn-search" ${isLoadingSearch ? "disabled" : ""}>
-          ${isLoadingSearch ? '<span class="spin">⟳</span> 検索中' : "🔍 AIで探す"}
-        </button>
+      <div>
+        <button class="btn-outline" id="btn-manual">＋ 候補を追加</button>
       </div>
     </div>
 
@@ -232,23 +177,10 @@ function renderMain() {
       <button class="btn-primary col-2" id="m-save">この候補を追加</button>
     </div>
 
-    ${state.searchError ? `
-      <div class="error-banner">
-        <p>検索に失敗しました。もう一度お試しいただくか、「自分で追加」をご利用ください。</p>
-        <p class="error-detail">${escapeHtml(state.searchError)}</p>
-      </div>
-    ` : ""}
-
-    ${suggestions.length > 0 ? `
-      <div class="hotel-list" style="margin-bottom:20px;">
-        ${suggestions.map((s, i) => suggestionCardHtml(s, i)).join("")}
-      </div>
-    ` : ""}
-
     ${state.loadingHotels ? `<div class="empty-state"><span class="spin">⟳</span> 読み込み中…</div>` : ""}
 
-    ${!state.loadingHotels && hotels && hotels.length === 0 && suggestions.length === 0 ? `
-      <div class="empty-state">まだ候補がありません。「AIで探す」か「自分で追加」で記録を始めましょう。</div>
+    ${!state.loadingHotels && hotels && hotels.length === 0 ? `
+      <div class="empty-state">まだ候補がありません。「候補を追加」で記録を始めましょう。</div>
     ` : ""}
 
     ${hotels && hotels.length > 0 ? `
@@ -262,7 +194,6 @@ function renderMain() {
   document.getElementById("btn-manual").addEventListener("click", () => {
     document.getElementById("manual-form").classList.toggle("hidden");
   });
-  document.getElementById("btn-search").addEventListener("click", () => searchHotels(trip));
   document.getElementById("trip-notes").addEventListener("blur", (e) => saveTripNotes(trip.id, e.target.value));
 
   const mSave = document.getElementById("m-save");
@@ -284,11 +215,6 @@ function renderMain() {
     });
   }
 
-  suggestions.forEach((s, i) => {
-    const btn = document.getElementById(`sugg-save-${i}`);
-    if (btn) btn.addEventListener("click", () => saveSuggestion(trip, s));
-  });
-
   (hotels || []).forEach((h) => {
     const pin = document.getElementById(`pin-${h.id}`);
     const del = document.getElementById(`del-${h.id}`);
@@ -299,35 +225,10 @@ function renderMain() {
   });
 }
 
-function suggestionCardHtml(s, i) {
-  return `
-    <div class="hotel-card suggestion-card">
-      <div class="hotel-body">
-        <div class="hotel-name-row">
-          <span class="hotel-name">${escapeHtml(s.name)}</span>
-          <span class="badge">AI提案</span>
-        </div>
-        <div class="hotel-area">📍 ${escapeHtml(s.area || "")}${s.distance ? ` ・ ${escapeHtml(s.distance)}` : ""}</div>
-        ${s.access ? `<div class="hotel-access">${escapeHtml(s.access)}</div>` : ""}
-        ${s.note ? `<div class="hotel-note">${escapeHtml(s.note)}</div>` : ""}
-        <div class="hotel-footer">
-          ${s.url ? `<a href="${escapeHtml(s.url)}" target="_blank" rel="noreferrer">詳細を見る ↗</a>` : ""}
-          <button class="btn-outline add-btn" id="sugg-save-${i}">記録に追加</button>
-        </div>
-      </div>
-      <div class="hotel-price-col">
-        <div class="hotel-price">${fmtYen(s.price, s.currency)}</div>
-        <div class="hotel-price-label">1泊あたり</div>
-        ${starsHtml(s.rating)}
-      </div>
-    </div>
-  `;
-}
-
 function hotelCardHtml(trip, h) {
   const overBudget = trip.budget && h.price && Number(h.price) > trip.budget;
   return `
-    <div class="hotel-card ${h.source === "manual" ? "manual" : ""} ${h.decided ? "decided" : ""}">
+    <div class="hotel-card ${h.decided ? "decided" : ""}">
       <div class="actions">
         <span id="pin-${h.id}" class="${h.decided ? "pinned" : ""}" title="決定にする">📌</span>
         <span id="del-${h.id}" title="削除">✕</span>
@@ -336,7 +237,6 @@ function hotelCardHtml(trip, h) {
         <div class="hotel-name-row">
           <span class="hotel-name">${escapeHtml(h.name)}</span>
           ${h.decided ? `<span class="badge decided">決定</span>` : ""}
-          <span class="badge ${h.source === "manual" ? "manual" : ""}">${h.source === "manual" ? "手動" : "AI検索"}</span>
         </div>
         <div class="hotel-area">📍 ${h.distance ? escapeHtml(h.distance) : ""}</div>
         ${h.access ? `<div class="hotel-access">${escapeHtml(h.access)}</div>` : ""}

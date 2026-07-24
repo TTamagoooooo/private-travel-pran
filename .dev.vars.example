@@ -1,3 +1,2 @@
-ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx
 SITE_PASSWORD=choose-a-password
 SESSION_SECRET=run-openssl-rand-hex-32-and-paste-here

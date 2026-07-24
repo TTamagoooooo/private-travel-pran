@@ -244,7 +244,6 @@ body {
   background: var(--card);
   border-left: 4px solid var(--accent);
 }
-.hotel-card.manual { border-left-color: var(--brass); }
 .hotel-card.decided { background: var(--decided-bg); box-shadow: 0 0 0 1px var(--brass); }
 .hotel-card .actions {
   position: absolute;
@@ -270,7 +269,6 @@ body {
   border: 1px solid var(--accent-deep);
   color: var(--accent-deep);
 }
-.badge.manual { border-color: var(--brass); color: var(--brass); }
 .badge.decided { background: var(--brass); color: #fff; border: none; font-weight: 500; }
 .hotel-area {
   font-size: 12px;
@@ -296,16 +294,6 @@ body {
 .hotel-price-label { font-size: 10px; color: var(--muted); }
 .over-budget { font-size: 9px; font-weight: 500; color: var(--danger); margin-bottom: 2px; }
 .stars { display: flex; justify-content: flex-end; gap: 1px; margin-top: 6px; }
-
-/* --- search suggestions --- */
-.suggestion-card {
-  border: 1px dashed var(--accent);
-  background: transparent;
-}
-.suggestion-card .add-btn {
-  margin-top: 8px;
-  font-size: 11px;
-}
 
 /* --- empty / status states --- */
 .empty-state {

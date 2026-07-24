@@ -1,7 +1,6 @@
 import { getJSON, putJSON, deleteKey } from "./kv.js";
 import { verifySession, createSession } from "./auth.js";
 import { json } from "./util.js";
-import { searchHotels } from "./search.js";
 
 const PUBLIC_PATHS = new Set(["/login.html", "/style.css", "/api/login"]);
 
@@ -40,9 +39,6 @@ export default {
       const hotelMatch = path.match(/^\/api\/hotels\/([^/]+)$/);
       if (hotelMatch && request.method === "PATCH") return updateHotel(request, env, url, hotelMatch[1]);
       if (hotelMatch && request.method === "DELETE") return deleteHotel(env, url, hotelMatch[1]);
-
-      // ---- AI search ----
-      if (path === "/api/search" && request.method === "POST") return searchHotels(request, env);
     } catch (e) {
       return json({ error: e.message || String(e) }, 500);
     }
@@ -149,7 +145,6 @@ async function createHotel(request, env) {
     access: body.access || "",
     note: body.note || "",
     url: body.url || "",
-    source: body.source === "ai" ? "ai" : "manual",
     decided: false,
     createdAt: new Date().toISOString(),
   };
