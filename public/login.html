@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>宿泊台帳 — ログイン</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #22261F; --paper: #ECE6D6; --card: #FAF7EE;
+    --accent: #4B6455; --line: #C7BFA4; --muted: #7C7460; --danger: #9C4A3C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--paper); color: var(--ink); font-family: 'Zen Kaku Gothic New', sans-serif;
+  }
+  .box {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 32px; width: 300px; text-align: center;
+  }
+  h1 { font-family: 'Shippori Mincho', serif; font-size: 20px; margin: 0 0 4px; }
+  p.sub { color: var(--muted); font-size: 12px; margin: 0 0 20px; }
+  input {
+    width: 100%; padding: 10px 12px; border-radius: 4px; border: 1px solid var(--line);
+    background: var(--paper); font-size: 14px; outline: none; margin-bottom: 12px;
+  }
+  button {
+    width: 100%; padding: 10px; border: none; border-radius: 4px; background: var(--accent);
+    color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit;
+  }
+  .error { color: var(--danger); font-size: 12px; margin-top: 10px; min-height: 16px; }
+</style>
+</head>
+<body>
+  <form class="box" id="login-form">
+    <h1>宿泊台帳</h1>
+    <p class="sub">パスワードを入力してください</p>
+    <input id="password" type="password" placeholder="パスワード" autofocus />
+    <button type="submit">入る</button>
+    <p class="error" id="error"></p>
+  </form>
+
+  <script>
+    const form = document.getElementById("login-form");
+    const errorEl = document.getElementById("error");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.textContent = "";
+      const password = document.getElementById("password").value;
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errorEl.textContent = data.error || "ログインに失敗しました";
+          return;
+        }
+        window.location.href = "/";
+      } catch (err) {
+        errorEl.textContent = String(err.message || err);
+      }
+    });
+  </script>
+</body>
+</html>

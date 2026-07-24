@@ -1,0 +1,13 @@
+{
+  "name": "hotel-ledger",
+  "private": true,
+  "version": "1.0.0",
+  "description": "旅程ごとにホテル候補を記録・比較する個人用Webアプリ(Cloudflare Workers + KV)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

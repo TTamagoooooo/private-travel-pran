@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>宿泊台帳</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="header">
+      <p class="eyebrow">TRAVEL LODGING LEDGER</p>
+      <h1 class="title">宿泊台帳</h1>
+      <p class="subtitle">旅程ごとに宿の候補を記録し、比較する。</p>
+      <button id="btn-logout" class="btn-outline" style="margin-top:8px;">ログアウト</button>
+    </header>
+
+    <section id="trip-strip" class="trip-strip"></section>
+
+    <section id="trip-form" class="panel hidden">
+      <input id="f-title" placeholder="旅程名(例: 山形出張)" />
+      <input id="f-destination" placeholder="目的地(例: 京都市)" class="col-2" />
+      <label class="field">チェックイン<input id="f-checkin" type="date" /></label>
+      <label class="field">チェックアウト<input id="f-checkout" type="date" /></label>
+      <label class="field">人数<input id="f-guests" type="number" min="1" value="1" /></label>
+      <label class="field">予算上限(1泊/円・任意)<input id="f-budget" type="number" /></label>
+      <input id="f-notes" placeholder="希望条件(例: 駅近、静か、大浴場)" class="col-2" />
+      <button id="f-save" class="btn-primary col-2">この旅程を保存</button>
+    </section>
+
+    <main id="main-panel"></main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
