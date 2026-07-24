@@ -295,6 +295,78 @@ body {
 .over-budget { font-size: 9px; font-weight: 500; color: var(--danger); margin-bottom: 2px; }
 .stars { display: flex; justify-content: flex-end; gap: 1px; margin-top: 6px; }
 
+/* --- cost summary --- */
+.cost-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+.cost-summary.over { border-color: var(--danger); }
+.cost-item { display: flex; flex-direction: column; gap: 2px; }
+.cost-label { font-size: 11px; color: var(--muted); }
+.cost-value { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--ink); }
+.cost-item.total .cost-value { color: var(--accent-deep); font-weight: 500; }
+.cost-item.budget .cost-value { color: var(--brass); }
+.cost-summary.over .cost-item.budget .cost-value { color: var(--danger); font-weight: 500; }
+
+/* --- tabs --- */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.tab-btn.active { color: var(--accent-deep); border-bottom-color: var(--accent); font-weight: 500; }
+.add-toggle { margin-bottom: 16px; }
+
+/* --- expenses --- */
+.expense-list { display: flex; flex-direction: column; gap: 8px; }
+.expense-row {
+  display: grid;
+  grid-template-columns: 70px 1fr auto 20px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: var(--card);
+  font-size: 13px;
+}
+.expense-cat {
+  font-size: 10px;
+  color: var(--brass);
+  border: 1px solid var(--brass);
+  border-radius: 4px;
+  padding: 2px 6px;
+  text-align: center;
+}
+.expense-note { color: var(--muted); font-size: 11px; }
+.expense-amount { font-family: 'JetBrains Mono', monospace; color: var(--accent-deep); }
+.expense-del { cursor: pointer; opacity: 0.35; text-align: center; }
+.expense-del:hover { opacity: 1; }
+.expense-row.total-row {
+  background: transparent;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 4px;
+  grid-template-columns: 1fr auto;
+  font-weight: 500;
+}
+
 /* --- empty / status states --- */
 .empty-state {
   text-align: center;

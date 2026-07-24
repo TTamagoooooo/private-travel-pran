@@ -39,6 +39,20 @@ export default {
       const hotelMatch = path.match(/^\/api\/hotels\/([^/]+)$/);
       if (hotelMatch && request.method === "PATCH") return updateHotel(request, env, url, hotelMatch[1]);
       if (hotelMatch && request.method === "DELETE") return deleteHotel(env, url, hotelMatch[1]);
+
+      // ---- transport ----
+      if (path === "/api/transport" && request.method === "GET") return listTransport(url, env);
+      if (path === "/api/transport" && request.method === "POST") return createTransport(request, env);
+      const transportMatch = path.match(/^\/api\/transport\/([^/]+)$/);
+      if (transportMatch && request.method === "PATCH") return updateTransport(request, env, url, transportMatch[1]);
+      if (transportMatch && request.method === "DELETE") return deleteTransport(env, url, transportMatch[1]);
+
+      // ---- expenses ----
+      if (path === "/api/expenses" && request.method === "GET") return listExpenses(url, env);
+      if (path === "/api/expenses" && request.method === "POST") return createExpense(request, env);
+      const expenseMatch = path.match(/^\/api\/expenses\/([^/]+)$/);
+      if (expenseMatch && request.method === "PATCH") return updateExpense(request, env, url, expenseMatch[1]);
+      if (expenseMatch && request.method === "DELETE") return deleteExpense(env, url, expenseMatch[1]);
     } catch (e) {
       return json({ error: e.message || String(e) }, 500);
     }
@@ -122,6 +136,8 @@ async function deleteTrip(env, id) {
   const next = trips.filter((t) => t.id !== id);
   await putJSON(env, "trips", next);
   await deleteKey(env, `hotels:${id}`);
+  await deleteKey(env, `transport:${id}`);
+  await deleteKey(env, `expenses:${id}`);
   return json({ ok: true });
 }
 
@@ -183,6 +199,133 @@ async function deleteHotel(env, url, id) {
   const key = `hotels:${tripId}`;
   const hotels = await getJSON(env, key, []);
   const next = hotels.filter((h) => h.id !== id);
+  await putJSON(env, key, next);
+  return json({ ok: true });
+}
+
+// --------------------------------------------------------- transport ---
+async function listTransport(url, env) {
+  const tripId = url.searchParams.get("tripId");
+  if (!tripId) return json({ error: "tripId is required" }, 400);
+  const items = await getJSON(env, `transport:${tripId}`, []);
+  items.sort((a, b) => `${a.departDate}${a.departTime}`.localeCompare(`${b.departDate}${b.departTime}`));
+  return json(items);
+}
+
+async function createTransport(request, env) {
+  const body = await request.json();
+  if (!body.tripId || !body.from || !body.to) {
+    return json({ error: "tripId, from and to are required" }, 400);
+  }
+  const item = {
+    id: crypto.randomUUID(),
+    type: body.type || "その他",
+    from: body.from,
+    to: body.to,
+    departDate: body.departDate || "",
+    departTime: body.departTime || "",
+    arriveDate: body.arriveDate || "",
+    arriveTime: body.arriveTime || "",
+    price: body.price ? Number(body.price) : null,
+    note: body.note || "",
+    url: body.url || "",
+    decided: false,
+    createdAt: new Date().toISOString(),
+  };
+  const key = `transport:${body.tripId}`;
+  const items = await getJSON(env, key, []);
+  items.push(item);
+  await putJSON(env, key, items);
+  return json(item);
+}
+
+async function updateTransport(request, env, url, id) {
+  const tripId = url.searchParams.get("tripId");
+  if (!tripId) return json({ error: "tripId is required" }, 400);
+  const body = await request.json();
+  const key = `transport:${tripId}`;
+  const items = await getJSON(env, key, []);
+  const idx = items.findIndex((t) => t.id === id);
+  if (idx === -1) return json({ error: "見つかりません" }, 404);
+  const updated = { ...items[idx] };
+  if (body.type !== undefined) updated.type = body.type;
+  if (body.from !== undefined) updated.from = body.from;
+  if (body.to !== undefined) updated.to = body.to;
+  if (body.departDate !== undefined) updated.departDate = body.departDate;
+  if (body.departTime !== undefined) updated.departTime = body.departTime;
+  if (body.arriveDate !== undefined) updated.arriveDate = body.arriveDate;
+  if (body.arriveTime !== undefined) updated.arriveTime = body.arriveTime;
+  if (body.price !== undefined) updated.price = body.price ? Number(body.price) : null;
+  if (body.note !== undefined) updated.note = body.note;
+  if (body.url !== undefined) updated.url = body.url;
+  if (body.decided !== undefined) updated.decided = !!body.decided;
+  items[idx] = updated;
+  await putJSON(env, key, items);
+  return json(updated);
+}
+
+async function deleteTransport(env, url, id) {
+  const tripId = url.searchParams.get("tripId");
+  if (!tripId) return json({ error: "tripId is required" }, 400);
+  const key = `transport:${tripId}`;
+  const items = await getJSON(env, key, []);
+  const next = items.filter((t) => t.id !== id);
+  await putJSON(env, key, next);
+  return json({ ok: true });
+}
+
+// ---------------------------------------------------------- expenses ---
+async function listExpenses(url, env) {
+  const tripId = url.searchParams.get("tripId");
+  if (!tripId) return json({ error: "tripId is required" }, 400);
+  const items = await getJSON(env, `expenses:${tripId}`, []);
+  return json(items);
+}
+
+async function createExpense(request, env) {
+  const body = await request.json();
+  if (!body.tripId || !body.label || !body.amount) {
+    return json({ error: "tripId, label and amount are required" }, 400);
+  }
+  const item = {
+    id: crypto.randomUUID(),
+    category: body.category || "その他",
+    label: body.label,
+    amount: Number(body.amount),
+    note: body.note || "",
+    createdAt: new Date().toISOString(),
+  };
+  const key = `expenses:${body.tripId}`;
+  const items = await getJSON(env, key, []);
+  items.push(item);
+  await putJSON(env, key, items);
+  return json(item);
+}
+
+async function updateExpense(request, env, url, id) {
+  const tripId = url.searchParams.get("tripId");
+  if (!tripId) return json({ error: "tripId is required" }, 400);
+  const body = await request.json();
+  const key = `expenses:${tripId}`;
+  const items = await getJSON(env, key, []);
+  const idx = items.findIndex((e) => e.id === id);
+  if (idx === -1) return json({ error: "見つかりません" }, 404);
+  const updated = { ...items[idx] };
+  if (body.category !== undefined) updated.category = body.category;
+  if (body.label !== undefined) updated.label = body.label;
+  if (body.amount !== undefined) updated.amount = Number(body.amount);
+  if (body.note !== undefined) updated.note = body.note;
+  items[idx] = updated;
+  await putJSON(env, key, items);
+  return json(updated);
+}
+
+async function deleteExpense(env, url, id) {
+  const tripId = url.searchParams.get("tripId");
+  if (!tripId) return json({ error: "tripId is required" }, 400);
+  const key = `expenses:${tripId}`;
+  const items = await getJSON(env, key, []);
+  const next = items.filter((e) => e.id !== id);
   await putJSON(env, key, next);
   return json({ ok: true });
 }
